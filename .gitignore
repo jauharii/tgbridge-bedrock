@@ -1,0 +1,14 @@
+# secrets — never commit these
+data/
+.env
+.env.*
+!.env.example
+*.mcpack
+# scratch
+/tmp/
+*.bak
+*.bak-*
+# editor noise
+.DS_Store
+*.swp__pycache__/
+*.pyc

@@ -1,0 +1,45 @@
+# docker-compose.yml — Bedrock Dedicated Server with the tgbridge Telegram bridge.
+#
+# Everything is declarative: env vars are the only inputs. The image installs the
+# behavior pack, writes its config, and enables the Beta APIs experiment at start.
+#
+#   docker compose up -d && docker compose logs -f | grep '\[tgbridge\]'
+#
+# Fresh installs boot twice (once to create level.dat, once after the experiment
+# flag is set). Everything after that is a single boot.
+
+services:
+  bds:
+    # build from this repo (no registry push needed)
+    build:
+      context: .
+    # or use a prebuilt image: image: ghcr.io/jauharii/tgbridge-bedrock:latest
+    image: tgbridge-bedrock:local
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
+    environment:
+      EULA: "TRUE"
+      TZ: "Asia/Kuala_Lumpur"
+      SERVER_NAME: "${MC_SERVER_NAME:-minecraft-bedrock}"
+      LEVEL_NAME: "${MC_LEVEL_NAME:-world}"
+      SERVER_UDP_PUBLISHED_IP: "${MC_PUBLIC_IP:-}"
+      # ── tgbridge ────────────────────────────────────────────────────────────
+      TG_CHAT_ID: "${TELEGRAM_CHAT_ID:?set TELEGRAM_CHAT_ID, e.g. -1001234567890}"
+      TG_TOKEN: "${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN}"
+      TG_API_BASE: "${TELEGRAM_API_BASE:-https://api.telegram.org}"
+      TG_BATCH_SIZE: "8"
+      TG_BATCH_FLUSH_MS: "4000"
+    ports:
+      # NetherNet: TCP signalling first, then a UDP range for gameplay
+      - "19132:19132/tcp"
+      - "19140-19155:19140-19155/udp"
+    volumes:
+      - ./data:/data
+    healthcheck:
+      # same check upstream uses; gives you `docker compose ps` truth
+      test: ["CMD", "mc-monitor", "status-bedrock", "--host", "127.0.0.1", "--port", "19132"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 180s
